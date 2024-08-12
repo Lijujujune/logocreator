@@ -1,45 +1,77 @@
 const fs = require('fs');
+const inquirer = require('inquirer');
 const { Triangle, Circle, Square } = require('./lib/shapes');
-const readline = require('readline');
 
-const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
-
-function prompt(question) {
-    return new Promise(resolve => rl.question(question, resolve));
+// Function to generate a unique filename using a timestamp
+function generateFilename() {
+    const timestamp = new Date().toISOString().replace(/[-T:.Z]/g, '');
+    return `logo_${timestamp}.svg`;
 }
 
-(async function() {
-    const text = await prompt('Enter up to three characters for the logo: ');
-    const textColor = await prompt('Enter the text color (keyword or hexadecimal): ');
-    const shapeType = await prompt('Choose a shape (circle, triangle, square): ');
-    const shapeColor = await prompt('Enter the shape color (keyword or hexadecimal): ');
+async function generateLogo() {
+    try {
+        // Prompt user for input using inquirer
+        const answers = await inquirer.prompt([
+            {
+                type: 'input',
+                name: 'text',
+                message: 'Enter up to three characters for the logo:',
+                validate: input => input.length <= 3 || 'Text must be up to three characters.'
+            },
+            {
+                type: 'input',
+                name: 'textColor',
+                message: 'Enter the text color (keyword or hexadecimal):',
+            },
+            {
+                type: 'list',
+                name: 'shapeType',
+                message: 'Choose a shape:',
+                choices: ['Circle', 'Triangle', 'Square']
+            },
+            {
+                type: 'input',
+                name: 'shapeColor',
+                message: 'Enter the shape color (keyword or hexadecimal):',
+            }
+        ]);
 
-    let shape;
-    if (shapeType.toLowerCase() === 'triangle') {
-        shape = new Triangle();
-    } else if (shapeType.toLowerCase() === 'circle') {
-        shape = new Circle();
-    } else if (shapeType.toLowerCase() === 'square') {
-        shape = new Square();
-    } else {
-        console.log('Invalid shape. Exiting.');
-        rl.close();
-        return;
-    }
+        // Determine the shape object based on user input
+        let shape;
+        switch (answers.shapeType.toLowerCase()) {
+            case 'triangle':
+                shape = new Triangle();
+                break;
+            case 'circle':
+                shape = new Circle();
+                break;
+            case 'square':
+                shape = new Square();
+                break;
+            default:
+                console.log('Invalid shape. Exiting.');
+                return;
+        }
 
-    shape.setColor(shapeColor);
+        // Set the color for the shape
+        shape.setColor(answers.shapeColor);
 
-    const svgContent = `
+        // Create SVG content
+        const svgContent = `
 <svg xmlns="http://www.w3.org/2000/svg" width="300" height="200">
     ${shape.render()}
-    <text x="150" y="125" font-size="30" text-anchor="middle" fill="${textColor}">${text}</text>
+    <text x="150" y="125" font-size="30" text-anchor="middle" fill="${answers.textColor}">${answers.text}</text>
 </svg>
-    `;
+        `;
 
-    fs.writeFileSync('examples/logo.svg', svgContent.trim());
-    console.log('Generated logo.svg');
-    rl.close();
-})();
+        // Generate a unique filename and write the SVG content to a file
+        const filename = generateFilename();
+        fs.writeFileSync(`examples/${filename}`, svgContent.trim());
+        console.log(`Generated ${filename}`);
+    } catch (error) {
+        console.error('An error occurred:', error);
+    }
+}
+
+// Run the logo generator
+generateLogo();
